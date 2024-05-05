@@ -11,10 +11,10 @@ FROM alpine:latest
 # 安装必要的工具包
 RUN apk --update --no-cache add curl tzdata ca-certificates \
     && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
-    && mkdir /etc/XrayR/ \
-    && curl -L "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/geoip.dat" -o /etc/XrayR/geoip.dat \
-    && curl -L "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/geosite.dat" -o /etc/XrayR/geosite.dat
+    && mkdir /sri/ \
+    && curl -L "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/geoip.dat" -o /sri/geoip.dat \
+    && curl -L "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/geosite.dat" -o /sri/geosite.dat
 
 COPY --from=builder /app/XrayR /usr/local/bin
 
-ENTRYPOINT [ "XrayR", "--config", "/etc/XrayR/config.yml"]
+ENTRYPOINT [ "XrayR", "--config", "/sri/config.yml"]
