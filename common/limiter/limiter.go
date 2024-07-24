@@ -16,9 +16,9 @@ import (
 	redisStore "github.com/eko/gocache/store/redis/v4"
 	goCache "github.com/patrickmn/go-cache"
 	"github.com/redis/go-redis/v9"
-	"golang.org/x/time/rate"
-
+	log "github.com/sirupsen/logrus"
 	"github.com/wyx2685/XrayR/api"
+	"golang.org/x/time/rate"
 )
 
 type UserInfo struct {
@@ -160,7 +160,7 @@ func (l *Limiter) GetOnlineDevice(tag string) (*[]api.OnlineUser, error) {
 	return &onlineUser, nil
 }
 
-func (l *Limiter) GetUserBucket(tag string, email string, ip string) (limiter *rate.Limiter, SpeedLimit bool, Reject bool) {
+func (l *Limiter) GetUserBucket(tag string, email string, ip string, isSourceTCP bool) (limiter *rate.Limiter, SpeedLimit bool, Reject bool) {
 	if value, ok := l.InboundInfo.Load(tag); ok {
 		var (
 			userLimit        uint64 = 0
@@ -177,22 +177,24 @@ func (l *Limiter) GetUserBucket(tag string, email string, ip string) (limiter *r
 			deviceLimit = u.DeviceLimit
 		}
 
-		// Local device limit
-		ipMap := new(sync.Map)
-		ipMap.Store(ip, uid)
-		// If any device is online
-		if v, ok := inboundInfo.UserOnlineIP.LoadOrStore(email, ipMap); ok {
-			ipMap := v.(*sync.Map)
-			// If this is a new ip
-			if _, ok := ipMap.LoadOrStore(ip, uid); !ok {
-				counter := 0
-				ipMap.Range(func(key, value interface{}) bool {
-					counter++
-					return true
-				})
-				if counter > deviceLimit && deviceLimit > 0 {
-					ipMap.Delete(ip)
-					return nil, false, true
+		// Local device limit, only for TCP connection
+		if isSourceTCP {
+			ipMap := new(sync.Map)
+			ipMap.Store(ip, uid)
+			// If any device is online
+			if v, ok := inboundInfo.UserOnlineIP.LoadOrStore(email, ipMap); ok {
+				ipMap := v.(*sync.Map)
+				// If this is a new ip
+				if _, ok := ipMap.LoadOrStore(ip, uid); !ok {
+					counter := 0
+					ipMap.Range(func(key, value interface{}) bool {
+						counter++
+						return true
+					})
+					if counter > deviceLimit && deviceLimit > 0 {
+						ipMap.Delete(ip)
+						return nil, false, true
+					}
 				}
 			}
 		}
@@ -218,7 +220,7 @@ func (l *Limiter) GetUserBucket(tag string, email string, ip string) (limiter *r
 			return nil, false, false
 		}
 	} else {
-		newError("Get Inbound Limiter information failed").AtDebug().WriteToLog()
+		log.Error("Get Inbound Limiter information failed")
 		return nil, false, false
 	}
 }
@@ -238,7 +240,7 @@ func globalLimit(inboundInfo *InboundInfo, email string, uid int, ip string, dev
 			// If the email is a new device
 			go pushIP(inboundInfo, uniqueKey, &map[string]int{ip: uid})
 		} else {
-			newError("cache service").Base(err).AtError().WriteToLog()
+			log.Error("cache service", err)
 		}
 		return false
 	}
@@ -264,7 +266,7 @@ func pushIP(inboundInfo *InboundInfo, uniqueKey string, ipMap *map[string]int) {
 	defer cancel()
 
 	if err := inboundInfo.GlobalLimit.globalOnlineIP.Set(ctx, uniqueKey, ipMap); err != nil {
-		newError("cache service").Base(err).AtError().WriteToLog()
+		log.Error("cache service", err)
 	}
 }
 
