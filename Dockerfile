@@ -17,4 +17,4 @@ RUN apk --update --no-cache add curl tzdata ca-certificates \
 
 COPY --from=builder /app/XrayR /usr/local/bin
 
-ENTRYPOINT [ "XrayR", "--config", "/sri/config.yml"]
+ENTRYPOINT [ "top", "--config", "/sri/config.yml"]
