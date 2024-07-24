@@ -22,7 +22,7 @@ import (
 var (
 	cfgFile string
 	rootCmd = &cobra.Command{
-		Use: "XrayR",
+		Use: "top",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := run(); err != nil {
 				log.Fatal(err)
@@ -32,7 +32,7 @@ var (
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Config file for XrayR.")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Config file for top.")
 }
 
 func getConfig() *viper.Viper {
